@@ -1,0 +1,3 @@
+```release-note:fix
+core: Return the node's real state from health and seal-status endpoints during a pending seal migration, instead of a 500 error. Standby nodes unsealed with `-migrate` no longer fail Kubernetes liveness probes before the migration completes.
+```

@@ -2356,10 +2356,21 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 		c.physicalCache.SetEnabled(true)
 	}
 
-	// Purge these for safety in case of a rotation
-	_ = c.seal.SetBarrierConfig(ctx, nil)
-	if c.seal.RecoveryKeySupported() {
-		_ = c.seal.SetRecoveryConfig(ctx, nil)
+	// Purge these for safety in case of a rotation. During a pending
+	// seal migration (see adjustForSealMigration), the in-memory configs
+	// staged by adjustSealConfigDuringMigration are authoritative: storage
+	// still holds the previous seal's config until this node becomes
+	// active and migrateSeal rewrites it. Purging the caches here would
+	// force subsequent seal config reads through the loaded-seal type
+	// check against the stale stored config, making /sys/health and
+	// /sys/seal-status fail for the whole pending-migration window.
+	// If the migration has already been performed (possibly by another
+	// node), storage holds the new config and purging stays safe.
+	if !c.IsInSealMigrationMode(false) || c.IsSealMigrated(false) {
+		_ = c.seal.SetBarrierConfig(ctx, nil)
+		if c.seal.RecoveryKeySupported() {
+			_ = c.seal.SetRecoveryConfig(ctx, nil)
+		}
 	}
 
 	// Load prior un-updated store into version history cache to compare
